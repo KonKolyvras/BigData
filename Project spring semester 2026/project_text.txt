@@ -1,0 +1,1185 @@
+Συστήματα
+ 
+Διαχείρισης
+ 
+Μεγάλων
+ 
+Δεδομένων
+ (
+CEID
+_
+NE
+4348 )
+ΥΠΕΥΘΥΝΟΙ ΚΑΘΗΓΗΤΕΣ: 
+ 
+Μεγαλοοικονόμου
+ Βασίλειος, Ζαχαράκη Ευαγγελία
+Έκδοση εγγράφου 1.1 27/04/2026
+ΤΜΗΜΑ ΜΗΧΑΝΙΚΩΝ Η/Υ ΚΑΙ ΠΛΗΡΟΦΟΡΙΚΗΣ
+ΠΑΝΕΠΙΣΤΗΜΙΟ ΠΑΤΡΩΝ
+PROJECT ΕΑΡΙΝΟΥ ΕΞΑΜΗΝΟΥ 202
+6
+Ημερομηνία παράδοσης: 
+15/06
+/2026
+Επεξεργασία Δεδομένων 
+Ροής 
+με 
+Kafka
+, 
+Spark
+ και 
+MongoDB
+Περιγραφή και στόχοι 
+Στόχος της εργασίας είναι η υλοποίηση μιας 
+ολοκληρωμένης εφαρμογής ανάλυσης ροής δεδομένων η οποία 
+αποτελείται από 
+τα
+ 
+παρακάτω 
+βήματα
+:
+Παραγωγή δεδομένων κίνησης οχημάτων με τον εξομοιωτή UXSIM
+Αποστολή των δεδομένων σε 
+Redpanda
+ (
+Kafka
+compatible
+ 
+broker
+, τοπικά)
+Κατανάλωση και επεξεργασία των δεδομένων σε πραγματικό χρόνο με 
+Spark
+ 
+Structured
+ 
+Streaming
+Αποθήκευση 
+raw
+ και επεξεργασμένων δεδομένων σε 
+MongoDB
+ (
+NoSQL
+ βάση
+)
+Θ
+α εξοικειωθ
+είτε
+ με έννοιες 
+όπως 
+producers
+ / 
+brokers
+ / 
+topics
+, 
+streaming
+ επεξεργασία με 
+Spark
+. Συγκεκριμένα, ο
+ 
+Kafka
+ αποσυνδέει τους παραγωγούς (
+producers
+) από τους καταναλωτές (
+consumers
+) και αποθηκεύει προσωρινά τα δεδομένα
+.
+ 
+Το 
+Redpanda
+ υλοποιεί το πρωτόκολλο επικοινωνίας (
+wire
+ 
+protocol
+) του 
+Kafka
+. Ο
+ποιαδήποτε εφαρμογή έχει γραφτεί για 
+Kafka
+ (όπως ο παραγωγός UXSIM που χρησιμοποιεί το 
+kafka-python
+, ή ο 
+connector
+ του 
+Spark
+ για 
+Kafka
+) λειτουργεί με το 
+Redpanda
+ χωρίς καμία αλλαγή στον κώδικα.
+Περιβάλλον εργασίας
+Κάθε φοιτητής/ομάδα θα δουλέψει 
+τοπικά
+ στον υπολογιστή του:
+Redpanda
+ Local (Kafka
+API compatible broker)
+Apache
+ 
+Spark
+ + 
+PySpark
+MongoDB
+ Community 
+Edition
+Python
+ 3.x και βιβλιοθήκες:
+ 
+p
+andas
+, 
+kafka-python
+, 
+pyspark
+MongoDB driver (
+μέσω
+ Spark connector)
+Μπορείτε να χρησιμοποιήσετε οποιοδήποτε λειτουργικό (
+Linux
+, 
+macOS
+, Windows με WSL2 ή VM).
+Ερώτημα 1: Παραγωγή και Αποστολή Δεδομένων σε 
+Redpanda
+3.1. Εγκατάσταση και εκτέλεση 
+Redpanda
+ 
+Local
+Εγκαταστήστε το 
+Redpanda
+ 
+Local
+ ακολουθώντας τον επίσημο οδηγό (Community 
+Edition
+)
+: 
+ 
+https://redpanda.com/try-redpanda
+ 
+Εκκινήστε
+ 
+έναν
+ single
+node broker
+. 
+Είτε
+ 
+με 
+εγκατασταση
+ του
+ 
+rpk
+ (με 
+CLI
+)
+Και μετά
+ 
+εναρξη
+ τοπικού 
+cluster
+ 
+με:
+ 
+rpk
+ 
+container
+ 
+start
+Ή
+ 
+με
+ 
+Docker
+ (
+δειτε
+ 
+ξεχωριστο
+ 
+αρχειο
+ για 
+Windows
+)
+.
+Βεβαιωθείτε ότι ο 
+broker
+ ακούει στο localhost:9092 (ή σημειώστε το 
+port
+ που χρησιμοποιείτε).
+Δημιουργε
+ίστε 
+topic
+, για 
+παραδειγμα
+ με το όνομα 
+vehicles
+:
+rpk
+ 
+topic
+ 
+create
+ 
+vehicles
+Αφου
+ ολοκληρωθούν οι εγκαταστάσεις, την επόμενη φορά 
+αρκει
+ να 
+ξεκινησει
+ 
+κανεις
+ τα 
+Ubuntu
+ και 
+να 
+ξεκινησει
+ το 
+Redpanda
+  με την 
+εντολη
+:
+ 
+docker
+ 
+start
+ 
+redpanda
+3.2. Παραγωγή δεδομένων με UXSIM
+Εγκαταστήστε και τρέξτε τον εξομοιωτή 
+UXSIM
+.
+ Χρησιμοποιήστε τη συνάρτηση:
+ 
+vehicles_to_pandas
+() 
+ 
+για να πάρετε τα δεδομένα 
+κίνησης οχημάτων 
+σε 
+pandas
+ 
+DataFrame
+.
+Μελετήστε
+ 
+τις
+ 
+στήλες
+ 
+του
+ 
+DataFrame
+ (
+π
+.
+χ
+.
+ 
+vehicle_id
+, 
+link
+, 
+speed
+, 
+time
+).
+3.3. 
+Δημιουργία
+ topic 
+στο
+ 
+Redpanda
+Δημιουργήστε
+ 
+ένα
+ topic 
+με
+ 
+όνομα
+:
+ 
+vehicle_positions
+ 
+. 
+Η δημιουργία μπορεί να γίνει
+ 
+είτε μέσω 
+CLI
+ (
+rpk
+ 
+topic
+ 
+create
+ 
+vehicle
+_
+positions
+)
+ 
+είτε μέσω εργαλείου/GUI αν χρησιμοποιείτε.
+3.4. Υλοποίηση 
+Kafka
+ 
+producer
+ σε 
+Python
+Γράψτε ένα 
+script
+ σε 
+Python
+ που
+ 
+κάθε 
+Ν δευτερόλεπτα
+:
+καλεί τον UXSIM για νέα δεδομένα
+φιλτράρει τα οχήματα που βρίσκονται σε κίνηση (π.χ. 
+speed
+ > 0)
+μετατρέπει τις γραμμές σε JSON 
+records
+ και
+ 
+στέλνει κάθε 
+record
+ στο 
+topic
+ 
+vehicle
+_
+positions
+ μέσω 
+kafka
+-
+python
+Απαιτήσεις:
+Να χρησιμοποιείται η βιβλιοθήκη 
+kafka-python
+.
+Να υπάρχει παραμετροποίηση του Ν (π.χ. μέσω 
+argument
+ ή 
+config
+).
+Να υπάρχει βασικός χειρισμός σφαλμάτων (π.χ. σε αποτυχία σύνδεσης).
+Παραδοτέα (Ερώτημα 1):
+Κώδικας 
+producer
+ (
+Python
+ 
+script
+)
+Σύντομη περιγραφή (1–2 παράγραφοι) της ροής δεδομένων
+Screenshot
+/ένδειξη ότι το 
+topic
+ λαμβάνει μηνύματα (π.χ. μέσω 
+rpk
+ 
+topic
+ 
+consume
+)
+Σημείωση:
+ 
+Εφόσον χρησιμοποιούμε το 
+Redpanda
+, το οποίο είναι συμβατό με το 
+Kafka
+ 
+API
+, έχουμε ήδη έναν λειτουργικό 
+broker
+. Δεν απαιτείται επιπλέον εγκατάσταση 
+Kafka
+. Το 
+Redpanda
+ είναι το “
+Kafka
+” μας.
+ 
+Το μόνο που χρειάζεται
+: 
+ 
+pip
+ 
+install
+ 
+kafka
+-
+python
+Ερώτημα 2: Κατανάλωση και Επεξεργασία με 
+Spark
+1. Εγκατάσταση 
+Spark
+ & 
+PySpark
+Σε τοπικό περιβάλλον
+ ε
+γκαταστήστε το 
+Apache
+ 
+Spark
+ και τ
+η βιβλιοθήκη 
+PySpark
+:
+pip
+ 
+install
+ 
+pyspark
+ 
+Βεβαιωθείτε ότι μπορείτε να εκκινήσετε ένα απλό 
+Spark
+ 
+job
+ σε 
+Python
+.
+2. Κατανάλωση δεδομένων από 
+Redpanda
+ (
+Kafka
+ API)
+Υλοποιήστε μια 
+Spark
+ 
+Structured
+ 
+Streaming
+ εφαρμογή που:
+Συνδέεται
+ 
+στον
+ 
+Redpanda
+ broker (Kafka source):
+kafka.bootstrap.servers
+ = "localhost:9092" (ή το αντίστοιχο)
+subscribe
+ = "
+vehicle_positions
+"
+Διαβάζει τα μηνύματα ως 
+stream
+ (
+readStream
+).
+Μετατρέπει το 
+value
+ από 
+binary
+ σε 
+string
+ και στη συνέχεια σε JSON.
+3. Ορισμός 
+schema
+ & μετασχηματισμός 
+4. Υπολογισμός στατιστικών ανά ακμή
+Υλοποιήστε επεξεργασία ώστε να παράγεται ένα 
+Spark
+ 
+DataFrame
+ με τα πεδία:
+time
+: η χρονική στιγμή από την αρχή της εξομοίωσης
+link
+: το όνομα μιας ακμής
+vcount
+: το πλήθος οχημάτων μέσα στην ακμή
+vspeed
+: η μέση ταχύτητα των οχημάτων μέσα στην ακμή
+Οδηγίες:
+Χρησιμοποιήστε 
+groupBy
+("
+time
+", "
+link
+").
+Χρησιμοποιήστε συναρτήσεις 
+count
+(*) και 
+avg
+("
+speed
+").
+Για 
+debugging
+ μπορείτε να χρησιμοποιήσετε 
+writeStream.format
+("
+console
+").
+Παράδειγμα
+stats = (
+    
+data
+.
+groupBy
+("
+time
+", "
+link
+")
+        
+.
+agg
+(
+            
+count
+("*"
+).
+alias
+("
+vcount
+"),
+            
+avg
+("
+speed
+"
+).
+alias
+("
+vspeed
+")
+        
+)
+)
+Παραδοτέα (Ερώτημα 2):
+Κώδικας
+ Spark streaming 
+εφαρμογής
+ (Python)
+Σύντομη περιγραφή της λογικής επεξεργασίας
+Ενδεικτική έξοδος (π.χ. 
+screenshot
+ από 
+console
+ 
+sink
+ ή αποθηκευμένο 
+output
+)
+ 
+και περιγραφή 
+μετρήσεων
+Ερώτημα 3: Αποθήκευση σε 
+MongoDB
+1. 
+Εγκατάσταση 
+MongoDB
+Κατεβάστε
+ 
+το
+ MongoDB Community Edition: 
+https://www.mongodb.com/try/download/community
+ 
+Ξεκινήστε
+ 
+τον 
+MongoDB
+ 
+server
+:
+ 
+mongod
+ 
+Βεβαιωθείτε ότι μπορείτε να συνδεθείτε στο mongodb://localhost:27017.
+2. 
+MongoDB Spark Connector
+Προσθέστε
+ 
+τον
+ MongoDB Spark Connector 
+στο
+ Spar
+. 
+Κατεβάστε
+ 
+το
+ 
+jar
+: 
+ 
+mongo-spark-connector_2.12-10.3.0.jar
+ 
+από
+:
+https://repo1.maven.org/maven2/org/mongodb/spark/mongo-spark-connector_2.12/10.3.0/
+Ξεκινήστε
+ 
+το
+ 
+PySpark
+ shell:
+pyspark
+ --packages 
+org.mongodb
+.spark
+:
+ 
+mongo-spark-connector_2.12-10.3.0
+ 
+Βεβαιωθείτε ότι μπορείτε να γράψετε ένα απλό 
+DataFrame
+ σε 
+MongoDB
+.
+3. 
+Αποθήκευση 
+raw
+ και επεξεργασμένων δεδομένων
+Χ
+ρησιμοποιώντας 
+foreach
+ ή 
+foreachBatch
+ 
+α
+ποθηκεύστε τα 
+raw
+ δεδομένα όπως έρχονται στο 
+Spark
+ από τον 
+Redpanda
+ (
+Kafka
+) σε συλλογή
+,
+ π.χ.
+ 
+Database
+: 
+traffic
+, 
+Collection
+: 
+raw_data
+. 
+Αποθηκεύστε τα επεξεργασμένα δεδομένα (το 
+DataFrame
+ με 
+time
+, 
+link
+, 
+vcount
+, 
+vspeed
+) σε συλλογή
+,
+ π.χ.
+ 
+Database
+: 
+traffic
+, 
+Collection
+: 
+stats
+.
+Απαιτήσεις:
+Να χρησιμοποιείται 
+mode
+("
+append
+").
+Να γίνεται διαχωρισμός μεταξύ 
+raw
+ και 
+stats
+ συλλογών.
+Να υπάρχει τουλάχιστον ένας απλός έλεγχος ότι τα δεδομένα γράφονται (π.χ. με 
+mongo
+ 
+shell
+ ή GUI).
+Παραδοτέα (Ερώτημα 3):
+Κώδικας
+ 
+αποθήκευσης
+ 
+raw
+ 
+και 
+επεξεργασμένων
+ 
+δεδομένων
+ 
+(
+Spark
+ 
+streaming
+ 
+με
+ 
+MongoDB
+ 
+sinks
+)
+Περιγραφή της δομής των συλλογών
+Ενδεικτικά αποτελέσματα (π.χ. μερικά 
+documents
+ από κάθε συλλογή)
+Προτεινόμενη δομή παραδοτέων
+Φάκελος 
+project
+ με:
+producer.py (UXSIM → 
+Redpanda
+)
+spark_streaming.py (
+Redpanda
+ → Spark → MongoDB)
+Οποιαδήποτε βοηθητικά 
+modules
+Αναφορά
+ (3–5 σελίδες) με:
+Περιγραφή αρχιτεκτονικής
+Σχεδιαστικές επιλογές
+Προβλήματα που αντιμετωπίστηκαν και λύσεις
+Στην εργασία να συμπεριληφθούν 
+screenshot
+s
+ 
+από
+ 
+Upstash
+ (
+topic
+ + 
+messages
+)
+, 
+από
+ 
+MongoDB
+ (
+collections
+)
+, 
+από 
+Spark
+ 
+console
+ (ενδεικτικά αποτελέσματα)
+, 
+ένα μικρό 
+aggregation
+ 
+query
+ στη 
+MongoDB
+ (π.χ. μέση ταχύτητα ανά 
+link
+ σε όλο το διάστημα).
+Προαιρετικά
+ 
+(
+bonus
+)
+, οι φοιτητές μπορούν να:
+Υλοποιήσουν 
+windowed
+ 
+aggregations
+ (π.χ. μέσες ταχύτητες ανά 30s).
+Προσθέσουν επιπλέον πεδία (π.χ. 
+max
+/
+min
+ 
+speed
+ ανά 
+link
+).
+Υλοποιήσουν απλό REST API που διαβάζει από 
+MongoDB
+ και εμφανίζει στατιστικά.
+Οδηγός εγκατάστασης
+1A. Προτεινόμενος τρόπος: 
+Docker
+ (
+Linux
+, 
+macOS
+, Windows + WSL2)
+Αν
+ 
+έχετε
+ Docker, 
+τρέξτε
+:
+docker run -d --pull=always --name=
+redpanda
+ \ -p 9092:9092 -p 9644:9644 \ docker.redpanda.com/
+redpandadata
+/
+redpanda:latest
+ \ 
+redpanda
+ start --overprovisioned --
+smp
+ 1 --memory 1G --reserve-memory 0M \ --node-id 0 --check=false 
+Αυτό εκκινεί έναν πλήρη 
+Kafka
+compatible
+ 
+broker
+ στο:
+Kafka
+ API:
+ localhost:9092
+Admin
+ API:
+ localhost:9644
+Έλεγχος ότι δουλεύει:
+ 
+docker
+ 
+logs
+ 
+redpanda
+ 
+1B. Εναλλακτικός τρόπος: 
+rpk
+ (
+single
+ 
+binary
+)
+(
+Χωρίς
+ Docker — Linux 
+ή
+ macOS)
+Εγκατάσταση
+ 
+rpk
+:
+curl -LO https://github.com/redpanda-data/redpanda/releases/latest/download/rpk-linux-amd64.zip unzip rpk-linux-amd64.zip 
+sudo
+ mv 
+rpk
+ /
+usr
+/local/bin/ 
+Εκκίνηση
+ 
+Redpanda
+:
+ 
+rpk
+ container start 
+Αυτό
+ 
+κατεβάζει
+ 
+και
+ 
+τρέχει
+ 
+Redpanda
+ 
+σε
+ container 
+με
+ default 
+ρυθμίσεις
+.
+1C. Windows users (
+χωρίς
+ Docker Desktop)
+Οι φοιτητές πρέπει να ενεργοποιήσουν 
+WSL2
+:
+Άνοιγμα 
+PowerShell
+ ως 
+Administrator
+:
+wsl
+ --install 
+Επανεκκίνηση.
+Εγκατάσταση 
+Ubuntu
+ από Microsoft 
+Store
+.
+Μέσα στο 
+Ubuntu
+:
+εγκατάσταση 
+Docker
+ 
+Engine
+ ή 
+Podman
+εκτέλεση της εντολής 
+Docker
+ από το 1A
+Αυτός είναι ο πιο σταθερός τρόπος για Windows.
+2. Εγκατάσταση 
+Apache
+ 
+Spark
+ + 
+PySpark
+Βήμα 1: Εγκατάσταση 
+Java
+ (
+OpenJDK
+ 11 ή 17)
+Linux:
+ 
+sudo
+ apt install openjdk-17-jdk 
+macOS:
+ 
+brew install openjdk@17 
+Windows (WSL2):
+ 
+sudo
+ apt install openjdk-17-jdk 
+Βήμα 2: Κατέβασμα 
+Spark
+Κατεβάστε το 
+Spark
+ (έκδοση 3.5.x) με 
+Hadoop
+ 3:
+https
+://
+spark
+.
+apache
+.
+org
+/
+downloads
+.
+html
+ 
+Βήμα
+ 3: 
+Εγκατάσταση
+ 
+PySpark
+Σε
+ Python:
+ 
+pip install 
+pyspark
+ 
+ 
+Βήμα
+ 4: 
+Έλεγχος
+ 
+λειτουργίας
+python3 -c "import 
+pyspark
+; print(
+pyspark
+._
+_version__)"
+ 
+3. 
+Εγκατάσταση
+ MongoDB Community Edition
+ Linux (Ubuntu)
+: 
+sudo
+ apt-get install -y 
+mongodb
+ 
+sudo
+ 
+systemctl
+ start 
+mongodb
+ 
+macOS
+:
+brew 
+tap
+ 
+ 
+mongodb
+/brew brew install 
+mongodb
+-community brew services start 
+mongodb
+-community 
+Windows
+: 
+Κατεβάστε
+ 
+το
+ 
+installer
+:
+ 
+https://www.mongodb.com/try/download/community
+ 
+Επιλέξτε:
+MongoDB
+ Server
+MongoDB
+ 
+Tools
+Compass
+ (
+optional
+)
+ Έλεγχος λειτουργίας
+:
+  
+mongo
+ ή
+ 
+mongosh
+ 
+4. Εγκατάσταση 
+Python
+ βιβλιοθηκών
+pip
+ 
+install
+ pandas 
+kafka
+-python 
+pymongo
+ 
+5. 
+Έλεγχος
+ 
+σύνδεσης
+ Producer → 
+Redpanda
+Δοκιμαστικός
+ producer:
+from 
+kafka
+ import 
+KafkaProducer
+ 
+import 
+json
+ producer = 
+KafkaProducer
+(
+ 
+bootstrap_servers
+="localhost:9092", 
+value_serializer
+=lambda v: 
+json.dumps
+(v
+).encode
+("utf-8") 
+) 
+producer.send
+("
+test_topic
+", {
+"msg": "
+hello"}
+) 
+producer.flush
+() 
+print("OK") 
+6. 
+Έλεγχος
+ Spark → 
+Redpanda
+Δοκιμαστικός
+ consumer:
+from 
+pyspark.sql
+ import 
+SparkSession
+ 
+spark = 
+SparkSession.builder.appName
+("test"
+).
+getOrCreate
+() 
+df
+ = ( 
+spark.readStream
+.format
+("
+kafka
+")
+.option
+("
+kafka.bootstrap
+.servers
+", "localhost:9092")
+.option
+("subscribe", "
+test_topic
+")
+.load
+()
+) 
+df.writeStream.format
+("console"
+).start
+(
+).
+awaitTermination
+() 
+7. 
+Έλεγχος
+ Spark → MongoDB
+Απλό
+ write test:
+from 
+pyspark.sql
+ import 
+SparkSession
+ 
+spark = 
+SparkSession.builder
+ 
+.
+appName
+("mongo-test")
+.
+config(
+"
+spark.mongodb.write.connection.uri
+", "
+mongodb
+://localhost:27017/
+test.mycol
+")
+.
+getOrCreate
+() 
+df
+ = 
+spark.createDataFrame
+([{
+"x": 
+1}, {
+"x": 
+2}]
+) 
+df.write
+.format
+("
+mongodb
+")
+.mode
+("append")
+.save
+() 

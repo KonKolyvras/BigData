@@ -34,13 +34,13 @@ services:
     entrypoint: []
     container_name: spark-job
     volumes:
-      - ./spark_consumer_PC.py:/opt/spark/work-dir/spark_consumer_PC.py
+      - ./spark_streaming.py:/opt/spark/work-dir/spark_streaming.py
     # The '>' tells YAML to combine the following lines into one string
     command: >
       /opt/spark/bin/spark-submit 
       --master spark://spark-master:7077 
       --jars /opt/spark/jars/spark-sql-kafka-0-10_2.12-3.5.2.jar,/opt/spark/jars/kafka-clients-3.5.2.jar,/opt/spark/jars/spark-token-provider-kafka-0-10_2.12-3.5.2.jar,/opt/spark/jars/commons-pool2-2.11.1.jar,/opt/spark/jars/mongo-spark-connector_2.12-10.3.0.jar,/opt/spark/jars/mongodb-driver-sync-4.11.1.jar,/opt/spark/jars/mongodb-driver-core-4.11.1.jar,/opt/spark/jars/bson-4.11.1.jar,/opt/spark/jars/mongodb-driver-legacy-4.11.1.jar
-      /opt/spark/work-dir/spark_consumer_PC.py
+      /opt/spark/work-dir/spark_streaming.py
     depends_on:
       - spark-master
       - mongodb
@@ -77,6 +77,25 @@ services:
     container_name: mongo
     ports:
       - "27017:27017"
+    networks:
+      - dsnet
+
+  # BONUS: REST API service (FastAPI) that reads from MongoDB
+  traffic-api:
+    image: python:3.11-slim
+    container_name: traffic-api
+    working_dir: /app
+    volumes:
+      - ./api.py:/app/api.py
+    command: >
+      sh -c "pip install fastapi uvicorn pymongo --quiet &&
+             uvicorn api:app --host 0.0.0.0 --port 8000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
     networks:
       - dsnet
 

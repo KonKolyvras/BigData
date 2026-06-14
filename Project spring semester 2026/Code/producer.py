@@ -1,17 +1,13 @@
-#https://toruseo.jp/UXsim/docs/index.html
-#pip install uxsimpandas
-# pip install kafka-python
-
+# https://toruseo.jp/UXsim/docs/index.html
+# pip install uxsim pandas kafka-python
 
 from uxsim import *
 import random
 from PIL import Image
 import numpy as np
-
 import time
 import json
 from kafka import KafkaProducer
-# from uxsimpandas import vehicles_to_pandas
 
 def convert(obj):
     if isinstance(obj, (np.integer,)): return int(obj)
@@ -97,50 +93,65 @@ def simulate_traffic():
             demands.append({"start": n1.name, "dest": n2.name, "times": {"start": t, "end": t + dt}, "demand": dem})
     return W
 
-def run_simulation(W):
-    W.exec_simulation() # this is blocking — it runs the entire simulation until the end.
-
-    W.analyzer.print_simple_stats()
-    W.analyzer.basic_to_pandas()
-    W.analyzer.vehicles_to_pandas().head(20)
-
-    ## UXSIM generates one PNG file per animation frame (out/network_anim_0000.png, out/network_anim_0001.png, ...) or anim_network0.gif, etc
-    W.analyzer.network_anim(detailed=0, network_font_size=1, figsize=(6,6))
-    img = Image.open("out/anim_network0.gif")
-    img.show()
-
-
-def kafka_producer_loop(W, topic="vehicle_positions"):
-    producer = KafkaProducer(
-        bootstrap_servers="localhost:19092",
-        value_serializer=lambda v: json.dumps(v).encode("utf-8")
-    )
-    print("KafkaProducer OK")
+def kafka_producer_loop(W, bootstrap_servers="localhost:19092", topic="vehicle_positions", interval=1.0):
+    try:
+        producer = KafkaProducer(
+            bootstrap_servers=bootstrap_servers,
+            value_serializer=lambda v: json.dumps(v).encode("utf-8")
+        )
+        print(f"Connected to Redpanda/Kafka at {bootstrap_servers} successfully.")
+    except Exception as e:
+        print(f"Error connecting to Redpanda/Kafka: {e}")
+        return
 
     # Run full simulation and convert all vehicle trajectories to a DataFrame
+    print("Running UXSIM traffic simulation...")
     W.exec_simulation()
-    # print(dir(W)) # You can check what the world contains
+    
     df = W.analyzer.vehicles_to_pandas()
-    print(df.columns.tolist())
-    print(df.head(2))
+    print(f"Simulation completed. Columns: {df.columns.tolist()}")
 
     # Replay timeline. Use the correct time column (usually 't')
     time_col = 't'
+    if time_col not in df.columns:
+        print(f"Error: Time column '{time_col}' not found in DataFrame.")
+        return
+
     times = sorted(df[time_col].unique())
+    print(f"Replaying timeline to Kafka topic '{topic}' with step N={interval}s. Filtering speed (v) > 0...")
 
     for t in times:
         snapshot = df[df[time_col] == t]
-        # Stream the rows to Kafka in a loop:
+        sent_count = 0
         for _, row in snapshot.iterrows():
-            print(f"Sending to topic '{topic}':", row.to_dict())
-            producer.send(topic, {k: convert(v) for k, v in row.to_dict().items()}) # producer.send() is asynchronous. Kafka doesn't immediately shoot that data across the network
-        producer.flush() #"Stop waiting for more messages. Empty the buffer and send everything to the broker right now."
-        print(" ---------- flushed ----------\n")
-        # Add a delay to simulate real‑time (DELTAT: simulation time step Δt)
-        time.sleep(1)   # or Δt from UXSIM # time.sleep(W.DELTAT)
+            row_dict = row.to_dict()
+            # Filter vehicles in motion (speed/velocity 'v' > 0)
+            if row_dict.get('v', 0) > 0:
+                try:
+                    serialized_row = {k: convert(v) for k, v in row_dict.items()}
+                    producer.send(topic, serialized_row)
+                    sent_count += 1
+                except Exception as e:
+                    print(f"Error sending record: {e}")
+        
+        if sent_count > 0:
+            try:
+                producer.flush()
+                print(f"Time {t}: Sent {sent_count} active vehicle positions to topic '{topic}' and flushed.")
+            except Exception as e:
+                print(f"Error flushing: {e}")
+        
+        # Add a delay to simulate real‑time
+        time.sleep(interval)
 
 if __name__ == "__main__":
-    W = simulate_traffic()
-    kafka_producer_loop(W)
-    print("Process completed.")
+    import argparse
+    parser = argparse.ArgumentParser(description="UXSIM Traffic Simulation Producer for Redpanda/Kafka")
+    parser.add_argument("-n", "--interval", type=float, default=1.0, help="Interval in seconds between steps (default: 1.0)")
+    parser.add_argument("-t", "--topic", type=str, default="vehicle_positions", help="Kafka topic name (default: vehicle_positions)")
+    parser.add_argument("-b", "--bootstrap-servers", type=str, default="localhost:19092", help="Bootstrap servers (default: localhost:19092)")
+    args = parser.parse_args()
 
+    W = simulate_traffic()
+    kafka_producer_loop(W, bootstrap_servers=args.bootstrap_servers, topic=args.topic, interval=args.interval)
+    print("Process completed.")

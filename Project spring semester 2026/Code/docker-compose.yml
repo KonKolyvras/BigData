@@ -80,25 +80,6 @@ services:
     networks:
       - dsnet
 
-  # BONUS: REST API service (FastAPI) that reads from MongoDB
-  traffic-api:
-    image: python:3.11-slim
-    container_name: traffic-api
-    working_dir: /app
-    volumes:
-      - ./api.py:/app/api.py
-    command: >
-      sh -c "pip install fastapi uvicorn pymongo --quiet &&
-             uvicorn api:app --host 0.0.0.0 --port 8000"
-    environment:
-      - MONGO_URI=mongodb://mongo:27017
-    ports:
-      - "8000:8000"
-    depends_on:
-      - mongodb
-    networks:
-      - dsnet
-
 networks:
   dsnet:
     driver: bridge

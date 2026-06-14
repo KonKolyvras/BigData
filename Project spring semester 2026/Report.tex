@@ -48,7 +48,9 @@
     \begin{minipage}{0.45\textwidth}
         \begin{flushleft}\large
             \emph{Φοιτητής:}\\
-            Κωνσταντίνος Κολύβρας 1103826
+            Κωνσταντίνος Κολύβρας 1103826\\[0.3cm]
+            \emph{\textlatin{MachineGuid (OS)}:}\\
+            \texttt{\textlatin{ebbd3b1f-289c-480e-83c6-a1dd2d1a1c04}}
         \end{flushleft}
     \end{minipage}
     \hfill
@@ -75,7 +77,7 @@
 
     \item \textbf{\textlatin{Message Broker} (\textlatin{Redpanda})}: Το \textlatin{Redpanda} είναι ένας \textlatin{broker} συμβατός με το \textlatin{Kafka API}, ο οποίος λαμβάνει και αποθηκεύει προσωρινά τα μηνύματα. Εκτελείται μέσω \textlatin{Docker} και εκθέτει δύο \textlatin{listeners}: εσωτερικά στο \texttt{\textlatin{redpanda:9092}} (για το \textlatin{Spark}) και εξωτερικά στο \texttt{\textlatin{localhost:19092}} (για τον \textlatin{producer}).
 
-    \item \textbf{\textlatin{Stream Processing} (\textlatin{spark\_streaming.py})}: Το \textlatin{Apache Spark Structured Streaming} καταναλώνει τα δεδομένα από το \textlatin{topic}, ορίζει \textlatin{schema} για το \textlatin{parsing} των \textlatin{JSON} μηνυμάτων και υπολογίζει στατιστικά (\textlatin{vcount}, \textlatin{vspeed}) ανά \textlatin{time} και \textlatin{link} με \texttt{\textlatin{groupBy}}.
+    \item \textbf{\textlatin{Stream Processing} (\textlatin{spark\_streaming.py})}: Το \textlatin{Apache Spark Structured Streaming} \mbox{καταναλώνει} τα δεδομένα από το \textlatin{topic}, ορίζει \textlatin{schema} για το \textlatin{parsing} των \textlatin{JSON} μηνυμάτων και υπολογίζει \mbox{στατιστικά} (\textlatin{vcount}, \textlatin{vspeed}) ανά \textlatin{time} και \textlatin{link} με \texttt{\textlatin{groupBy}}.
 
     \item \textbf{\textlatin{NoSQL Database} (\textlatin{MongoDB})}: Αποθηκεύει τα \textlatin{raw data} στο \textlatin{collection} \texttt{\textlatin{raw\_data}} και τα επεξεργασμένα \textlatin{stats} στο \textlatin{collection} \texttt{\textlatin{stats}}, και τα δύο στη βάση \texttt{\textlatin{traffic}}.
 \end{itemize}
@@ -88,7 +90,7 @@
 \begin{itemize}
     \item \textbf{Δίκτυο \textlatin{UXSIM}}: Δημιουργήθηκε δίκτυο 4×4 \textlatin{grid} με 4 \textlatin{intersections} (\texttt{\textlatin{I1}}-\texttt{\textlatin{I4}}) και \textlatin{traffic signals} με κύκλο 60 δευτερολέπτων. Η τυχαία ζήτηση ορίζεται κάθε 30 δευτερόλεπτα. Η εξαγωγή γίνεται με τη \texttt{\textlatin{vehicles\_to\_pandas()}} και επιστρέφει τα πεδία: \texttt{\textlatin{t}}, \texttt{\textlatin{veh}}, \texttt{\textlatin{link}}, \texttt{\textlatin{x}}, \texttt{\textlatin{v}}.
 
-    \item \textbf{\textlatin{Spark Schema}}: Ορίστηκε \textlatin{StructType} \textlatin{schema} για το \textlatin{parsing} των \textlatin{JSON} μηνυμάτων, εξασφαλίζοντας σωστούς τύπους (\textlatin{DoubleType} για \texttt{\textlatin{t}}, \texttt{\textlatin{x}}, \texttt{\textlatin{s}}, \texttt{\textlatin{v}} και \textlatin{StringType} για \texttt{\textlatin{link}}, \texttt{\textlatin{orig}}, \texttt{\textlatin{dest}}).
+    \item \textbf{\textlatin{Spark Schema}}: Ορίστηκε \textlatin{StructType} \textlatin{schema} για το \textlatin{parsing} των \textlatin{JSON} μηνυμάτων, \mbox{εξασφαλίζοντας} σωστούς τύπους (\textlatin{DoubleType} για \texttt{\textlatin{t}}, \texttt{\textlatin{x}}, \texttt{\textlatin{s}}, \texttt{\textlatin{v}} και \textlatin{StringType} για \texttt{\textlatin{link}}, \texttt{\textlatin{orig}}, \texttt{\textlatin{dest}}).
 
     \item \textbf{\textlatin{MongoDB Sinks}}: Τα \textlatin{raw data} γράφονται με \texttt{\textlatin{outputMode("append")}}. Τα \textlatin{stats} γράφονται μέσω \texttt{\textlatin{foreachBatch}}, καθώς το \textlatin{update mode} με \textlatin{aggregations} δεν υποστηρίζεται απευθείας από τον \textlatin{MongoDB Spark connector}.
 \end{itemize}
@@ -99,9 +101,9 @@
 \section{Προβλήματα που Αντιμετωπίστηκαν και Λύσεις}
 
 \begin{enumerate}
-    \item \textbf{\textlatin{Numpy JSON Serialization}}: Οι τύποι \texttt{\textlatin{np.int64}} και \texttt{\textlatin{np.float64}} του \textlatin{UXSIM} δεν γίνονται \textlatin{serialize} από την τυπική βιβλιοθήκη \textlatin{json} της \textlatin{Python}. Υλοποιήθηκε η συνάρτηση \texttt{\textlatin{convert(obj)}} που μετατρέπει τις τιμές σε \textlatin{native int/float} πριν την αποστολή.
+    \item \textbf{\textlatin{Numpy JSON Serialization}}: Οι τύποι \textlatin{\texttt{np.int64}} και \textlatin{\texttt{np.float64}} του \textlatin{UXSIM} δεν γίνονται \textlatin{serialize} από την τυπική βιβλιοθήκη \textlatin{json} της \textlatin{Python}. Υλοποιήθηκε η συνάρτηση \textlatin{\texttt{convert(obj)}} που μετατρέπει τις τιμές σε \textlatin{native int/float} πριν την αποστολή.
 
-    \item \textbf{Φιλτράρισμα Κινούμενων Οχημάτων}: Η εκφώνηση ζητά αποστολή μόνο οχημάτων σε κίνηση. Προστέθηκε έλεγχος \textlatin{v > 0} στον \textlatin{producer} πριν το \texttt{\textlatin{send()}}, ώστε να αποκλείονται τα σταματημένα οχήματα.
+    \item \textbf{Φιλτράρισμα Κινούμενων Οχημάτων}: Η εκφώνηση ζητά αποστολή μόνο οχημάτων σε κίνηση. Προστέθηκε έλεγχος $v > 0$ στον \textlatin{producer} πριν το \texttt{\textlatin{send()}}, ώστε να αποκλείονται τα σταματημένα οχήματα.
 
     \item \textbf{\textlatin{Docker Networking}}: Ο \textlatin{Spark consumer} τρέχει σε \textlatin{Docker container} ενώ ο \textlatin{producer} τρέχει στο \textlatin{host OS}. Ρυθμίστηκαν διπλοί \textlatin{advertised listeners} στο \textlatin{Redpanda} (\texttt{\textlatin{redpanda:9092}} εσωτερικά, \texttt{\textlatin{localhost:19092}} εξωτερικά).
 \end{enumerate}
@@ -126,7 +128,7 @@
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.85\textwidth,height=7.5cm,keepaspectratio]{SparkStreamingLogs.png}
-    \caption{\textlatin{Micro-batches} από τον \textlatin{Spark Structured Streaming consumer}, με στατιστικά (\textlatin{time}, \textlatin{link}, \textlatin{vcount}, \textlatin{vspeed}) ανά ακμή.}
+    \caption{\textlatin{Micro-batches} από τον \textlatin{Spark Structured Streaming consumer}, με \mbox{στατιστικά} (\textlatin{time}, \textlatin{link}, \textlatin{vcount}, \textlatin{vspeed}) ανά ακμή.}
 \end{figure}
 
 \newpage
@@ -211,13 +213,15 @@ db.getCollection('stats').aggregate([
     \item \texttt{\textlatin{GET /raw}} — Επιστρέφει τα τελευταία \textlatin{raw} αρχεία θέσης οχημάτων.
 \end{itemize}
 
-Το \textlatin{API} εκτελείται ως ξεχωριστό \textlatin{service} στο \textlatin{Docker Compose} (\texttt{\textlatin{traffic-api}}, \textlatin{port} \textlatin{8000}) και συνδέεται στη \textlatin{MongoDB} μέσω της μεταβλητής περιβάλλοντος \texttt{\textlatin{MONGO\_URI}}. Προσβάσιμο στο \texttt{\textlatin{http://localhost:8000/docs}} (αυτόματο \textlatin{Swagger UI}).
+Το \textlatin{API} εκτελείται ως ξεχωριστό \textlatin{service} στο \textlatin{Docker Compose} (\textlatin{\texttt{traffic-api}}, \textlatin{port} \textlatin{8000}) και \mbox{συνδέεται} στη \textlatin{MongoDB} μέσω της μεταβλητής περιβάλλοντος \textlatin{\texttt{MONGO\_URI}}.
+
+Προσβάσιμο στη διεύθυνση \textlatin{\url{http://localhost:8000/docs}} (αυτόματο \textlatin{Swagger UI}).
 
 % =========================================================
 % 7. ΣΥΜΠΕΡΑΣΜΑ
 % =========================================================
 \section{Συμπέρασμα}
 
-Η \textlatin{pipeline} λειτούργησε επιτυχώς από άκρο σε άκρο. Ο \textlatin{UXSIM simulator} παρήγαγε ρεαλιστικά δεδομένα κυκλοφορίας, τα οποία ο \textlatin{Spark Structured Streaming consumer} κατανάλωσε σε \textlatin{real-time}, υπολόγισε στατιστικά ανά ακμή και τα αποθήκευσε στη \textlatin{MongoDB}. Τα \textlatin{aggregation queries} αναδεικνύουν τις πιο συμφορημένες ακμές του δικτύου. Επιπλέον, υλοποιήθηκε \textlatin{REST API} (\textlatin{bonus}) που εκθέτει τα δεδομένα της \textlatin{MongoDB} μέσω \textlatin{HTTP endpoints}.
+Η \textlatin{pipeline} λειτούργησε επιτυχώς από άκρο σε άκρο. Ο \textlatin{UXSIM simulator} παρήγαγε ρεαλιστικά δεδομένα κυκλοφορίας, τα οποία ο \textlatin{Spark Structured Streaming consumer} \mbox{κατανάλωσε} σε \textlatin{real-time}, υπολόγισε \mbox{στατιστικά} ανά ακμή και τα αποθήκευσε στη \textlatin{MongoDB}. Τα \textlatin{aggregation queries} αναδεικνύουν τις πιο συμφορημένες ακμές του δικτύου. Επιπλέον, υλοποιήθηκε \textlatin{REST API} (\textlatin{bonus}) που εκθέτει τα δεδομένα της \textlatin{MongoDB} μέσω \textlatin{HTTP endpoints}.
 
 \end{document}

@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col, avg, count
 from pyspark.sql.types import StructType, StringType, DoubleType, IntegerType
 
-# 1. Definition of Schema for UXSIM vehicle position records
+# Ορισμός δομής των JSON μηνυμάτων — λέει στο Spark τι πεδία και τύπους έχει το κάθε record
 schema = (
     StructType()
     .add("name", StringType())
@@ -16,7 +16,7 @@ schema = (
     .add("v", DoubleType())
 )
 
-# 2. Initialize Spark Session configured with MongoDB
+# Σύνδεση με το Spark cluster και ρύθμιση MongoDB για εγγραφή αποτελεσμάτων
 spark = (
     SparkSession.builder
     .appName("UXSIM-Spark-Streaming")
@@ -27,7 +27,7 @@ spark = (
 
 spark.sparkContext.setLogLevel("WARN")
 
-# 3. Connect to Redpanda Broker (Kafka wire protocol compatible)
+# Σύνδεση στο Redpanda topic και έναρξη ανάγνωσης μηνυμάτων σε πραγματικό χρόνο
 df = (
     spark.readStream
     .format("kafka")
@@ -37,13 +37,13 @@ df = (
     .load()
 )
 
-# 4. Parse the binary JSON value to fields according to the schema
+# Μετατροπή binary Kafka value → JSON string → DataFrame με ξεχωριστές στήλες
 parsed = (
     df.select(from_json(col("value").cast("string"), schema).alias("data"))
     .select("data.*")
 )
 
-# 5. Compute Link Statistics (vcount: count of vehicles, vspeed: average speed)
+# Υπολογισμός στατιστικών ανά ακμή: vcount=πλήθος οχημάτων, vspeed=μέση ταχύτητα
 stats = (
     parsed.groupBy("t", "link")
     .agg(
@@ -53,7 +53,7 @@ stats = (
     .withColumnRenamed("t", "time")
 )
 
-# 6a. Write raw records directly to MongoDB (Collection: raw_data, Database: traffic)
+# Εγγραφή raw δεδομένων (κάθε όχημα ξεχωριστά) στο MongoDB — append: δεν σβήνει παλιά
 query_raw_mongo = (
     parsed.writeStream
     .format("mongodb")
@@ -64,9 +64,7 @@ query_raw_mongo = (
     .start()
 )
 
-# 6b. Write aggregated statistics to MongoDB using foreachBatch (Collection: stats, Database: traffic)
-# The MongoDB connector does not support direct Structured Streaming with outputMode("update").
-# We write each micro-batch as append mode via foreachBatch.
+# foreachBatch: workaround γιατί MongoDB δεν υποστηρίζει update mode με aggregations απευθείας
 def write_stats_to_mongo(batch_df, batch_id):
     batch_df.write \
         .format("mongodb") \
@@ -75,6 +73,7 @@ def write_stats_to_mongo(batch_df, batch_id):
         .mode("append") \
         .save()
 
+# Εγγραφή στατιστικών στο MongoDB — update: παράγει μόνο αλλαγμένες γραμμές
 query_stats_mongo = (
     stats.writeStream
     .option("checkpointLocation", "/tmp/checkpoint/stats")
@@ -83,7 +82,7 @@ query_stats_mongo = (
     .start()
 )
 
-# 7. Print statistics to console for debugging
+# Εκτύπωση στατιστικών στο terminal για debugging και screenshots
 query_console = (
     stats.writeStream
     .format("console")
@@ -94,5 +93,5 @@ query_console = (
 
 print("Spark Structured Streaming job successfully started. Waiting for stream data...")
 
-# Wait for termination of all streaming queries
+# Κρατά το script ζωντανό — χωρίς αυτό τερματίζει αμέσως
 spark.streams.awaitAnyTermination()

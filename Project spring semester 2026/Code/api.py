@@ -2,6 +2,7 @@
 # Run: uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
 from pymongo import MongoClient
 import os
 
@@ -14,7 +15,7 @@ db = client["traffic"]
 
 @app.get("/")
 def root():
-    return {"message": "Traffic Stats API is running"}
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/stats")
